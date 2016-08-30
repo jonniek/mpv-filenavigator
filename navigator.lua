@@ -19,7 +19,7 @@ function handler()
   end
   local output = path.."\n\n"
   local b = cursor - 5
-  if b > 1 then output=output.."...\n" end
+  if b > 0 then output=output.."...\n" end
   if b<0 then b=0 end
   for a=b,b+10,1 do
     if a==length then break end
