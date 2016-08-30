@@ -8,3 +8,8 @@ File navigator for mpv media player. Currently only works on linux, relies on st
 - __ctrl+o__ open directory with mpv, same as mpv /path/to/dir
   
 ![alt text](https://giant.gfycat.com/DisfiguredBlindAmethystinepython.gif "Screenshot")
+
+####My other scripts
+- [unseen-playlistmaker](https://github.com/donmaiq/unseen-playlistmaker)
+- [playlistmanager](https://github.com/donmaiq/Mpv-Playlistmanager)
+- [nextfile](https://github.com/donmaiq/mpv-nextfile)
