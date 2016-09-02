@@ -4,8 +4,9 @@ File navigator for mpv media player. Currently only works on linux, relies on st
 #### Keybinds  
 - __ctrl+f__ scan directory, if no file open defaults to /. ctrl+i/j/k/l call the same function so this is not very nececcary
 - __ctrl+i/k__ cursor up/down
-- __ctrl+j/l__ directory back/forward, incase of file play it.
-- __ctrl+o__ open directory with mpv, same as mpv /path/to/dir
+- __ctrl+j/l__ directory back/forward, incase of file append to playlist
+  - __ctrl+L__ same as ctrl+l but replace file instead of appending to playlist
+- __ctrl+o__ open directory with mpv, same as `mpv /path/to/dir`
   
 ![alt text](https://giant.gfycat.com/DisfiguredBlindAmethystinepython.gif "Screenshot")
 
