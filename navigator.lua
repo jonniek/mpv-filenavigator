@@ -10,7 +10,7 @@ cursor = 0
 path = nil
 length=0
 defaultpath = "/"
-function handler()
+function handler(arg)
   if not path then
     if mp.get_property('path') then
       path = string.sub(mp.get_property("path"), 1, string.len(mp.get_property("path"))-string.len(mp.get_property("filename")))
@@ -24,7 +24,8 @@ function handler()
   for a=b,b+10,1 do
     if a==length then break end
     if a == cursor then
-      output = output.."> "..dir[a].." <\n"
+      output = output.."> "..dir[a].." <"
+      if arg then output = output.." + added to playlist\n" else output=output.."\n" end
     else
       output = output..dir[a].."\n"
     end
@@ -38,6 +39,8 @@ end
 function navdown()
   if cursor~=length-1 then
     cursor = cursor+1
+  else
+    cursor = 0
   end
   handler()
 end
@@ -45,18 +48,33 @@ end
 function navup()
   if cursor~=0 then
     cursor = cursor-1
+  else
+    cursor = length-1
   end
   handler()
 end
 
-function childdir()
+function childdirappend()
+  childdir(true)
+end
+
+function childdirreplace()
+  childdir(false)
+end
+
+function childdir(append)
   local item = dir[cursor]
   if item then
     local isfolder = os.capture('if test -d '..string.gsub(path..item, "%s+", "\\ ")..'; then echo "true"; fi')
     if isfolder=="true" then
       changepath(path..dir[cursor].."/")
     else
-      mp.commandv("loadfile", path..item, "replace")
+      if append then
+        mp.commandv("loadfile", path..item, "append-play")
+        handler(true)
+      else
+        mp.commandv("loadfile", path..item, "replace")
+      end
     end
   end
 end
@@ -103,5 +121,6 @@ mp.add_key_binding("CTRL+f", "scandirectory", handler)
 mp.add_key_binding("CTRL+k", "navdown", navdown)
 mp.add_key_binding("CTRL+i", "navup", navup)
 mp.add_key_binding("CTRL+o", "opendir", opendir)
-mp.add_key_binding("CTRL+l", "childdir", childdir)
+mp.add_key_binding("CTRL+l", "childdirappend", childdirappend)
+mp.add_key_binding("CTRL+L", "childdirreplace", childdirreplace)
 mp.add_key_binding("CTRL+j", "parentdir", parentdir)
