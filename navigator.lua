@@ -161,8 +161,8 @@ end
 
 mp.add_key_binding("CTRL+f", "scandirectory", handler)
 mp.add_key_binding("CTRL+u", "favorites", cyclefavorite)
-mp.add_key_binding("CTRL+k", "navdown", navdown)
-mp.add_key_binding("CTRL+i", "navup", navup)
+mp.add_key_binding("CTRL+k", "navdown", navdown, "repeatable")
+mp.add_key_binding("CTRL+i", "navup", navup, "repeatable")
 mp.add_key_binding("CTRL+o", "opendir", opendir)
 mp.add_key_binding("CTRL+l", "childdir", childdir)
 mp.add_key_binding("CTRL+j", "parentdir", parentdir)
