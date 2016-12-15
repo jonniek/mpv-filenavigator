@@ -22,9 +22,9 @@ local settings = {
       ['^.*%.log$']='', --ignore extension .log
     },
 
-    dynamic_binds = true, --navigation keybinds override arrowkeys and enter when activating script
+    dynamic_binds = true, --navigation keybinds override arrowkeys and enter when activating script, false means keys are always actíve
     menu_timeout = true, 	--timeouts after osd_dur seconds, else will be toggled by keybind
-    osd_dur = 5,
+    osd_dur = 5,					--osd duration if timeout is set to true
 }
 
 function os.capture(cmd, raw)
@@ -186,6 +186,7 @@ function add_keybinds()
 	mp.add_forced_key_binding("BS", "nav-undo", undo)
 	mp.add_forced_key_binding("RIGHT", "nav-forward", childdir)
 	mp.add_forced_key_binding("LEFT", "nav-back", parentdir)
+	mp.add_forced_key_binding("g", "nav-favorites", cyclefavorite)
 end
 
 function remove_keybinds()
@@ -196,6 +197,7 @@ function remove_keybinds()
     mp.remove_key_binding('nav-undo')
     mp.remove_key_binding('nav-forward')
     mp.remove_key_binding('nav-back')
+		mp.remove_key_binding("nav-favorites")
   end
 end
 timer = mp.add_periodic_timer(settings.osd_dur, remove_keybinds)
@@ -221,4 +223,3 @@ function activate()
 end
 
 mp.add_key_binding("f", "navigator", activate)
-mp.add_key_binding("u", "nav-favorites", cyclefavorite)
