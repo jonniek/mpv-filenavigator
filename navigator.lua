@@ -8,6 +8,7 @@ local settings = {
         [3] = '/home/anon/',
     },
     --ignore paths, value anything that returns true for if statement
+    --you can ignore children without ignoring the parent
     ignorePath = {
       ['/bin']='1',['/boot']='1',['/cdrom']='1',['/dev']='1',['/etc']='1',['/lib']='1',['/lib32']='1',['/lib64']='1',
       ['/srv']='1',['/sys']='1',['/snap']='1',['/root']='1',['/sbin']='1',['/proc']='1',['/opt']='1',['/usr']='1',['/run']='1',
@@ -20,6 +21,10 @@ local settings = {
       ['^lost%+found$']='',
       ['^.*%.log$']='', --ignore extension .log
     },
+
+    dynamic_binds = true, --navigation keybinds override arrowkeys and enter when activating script
+    menu_timeout = true, 	--timeouts after osd_dur seconds, else will be toggled by keybind
+    osd_dur = 5,
 }
 
 function os.capture(cmd, raw)
@@ -35,6 +40,8 @@ cursor = 0
 length = 0
 --osd handler that displays your navigation and information
 function handler(arg)
+  add_keybinds()
+  timer:kill()
   if not path then
     if mp.get_property('path') and not settings.forcedefault then
       path = string.sub(mp.get_property("path"), 1, string.len(mp.get_property("path"))-string.len(mp.get_property("filename")))
@@ -49,7 +56,8 @@ function handler(arg)
     if a==length then break end
     if a == cursor then
       output = output.."> "..dir[a].." <"
-      if arg then output = output.." + added to playlist\n" else output=output.."\n" end
+      if arg == "added" then output = output.." + added to playlist\n"
+      	elseif arg == "removed" then output = output.." - removed previous addition\n" else output=output.."\n" end
     else
       output = output..dir[a].."\n"
     end
@@ -57,7 +65,12 @@ function handler(arg)
       output=output.."..."
     end
   end
-  mp.osd_message(output, 5)
+  if not settings.menu_timeout then
+  	mp.osd_message(output, 100000)
+  else
+  	mp.osd_message(output, settings.osd_dur)
+  	timer:resume()
+  end
 end
 
 function navdown()
@@ -87,15 +100,23 @@ function childdir()
       changepath(path..dir[cursor].."/")
     else
       mp.commandv("loadfile", path..item, "append-play")
-      handler(true)
+      handler("added")
     end
   end
+end
+
+--undo playlist file append
+function undo()
+	mp.commandv("playlist-remove", tonumber(mp.get_property('playlist-count'))-1)
+	handler("removed")
 end
 
 --replace current playlist with directory or file
 function opendir()
   local item = dir[cursor]
   if item then
+  	mp.osd_message("", 0.2)
+    remove_keybinds()
     mp.commandv("loadfile", path..item, "replace")
   end
 end
@@ -158,11 +179,46 @@ function cyclefavorite()
   end
 end
 
+function add_keybinds()
+	mp.add_forced_key_binding("DOWN", "nav-down", navdown, "repeatable")
+	mp.add_forced_key_binding("UP", "nav-up", navup, "repeatable")
+	mp.add_forced_key_binding("ENTER", "nav-open", opendir)
+	mp.add_forced_key_binding("BS", "nav-undo", undo)
+	mp.add_forced_key_binding("RIGHT", "nav-forward", childdir)
+	mp.add_forced_key_binding("LEFT", "nav-back", parentdir)
+end
 
-mp.add_key_binding("CTRL+f", "scandirectory", handler)
-mp.add_key_binding("CTRL+u", "favorites", cyclefavorite)
-mp.add_key_binding("CTRL+k", "navdown", navdown, "repeatable")
-mp.add_key_binding("CTRL+i", "navup", navup, "repeatable")
-mp.add_key_binding("CTRL+o", "opendir", opendir)
-mp.add_key_binding("CTRL+l", "childdir", childdir)
-mp.add_key_binding("CTRL+j", "parentdir", parentdir)
+function remove_keybinds()
+  if settings.dynamic_binds then
+    mp.remove_key_binding('nav-down')
+    mp.remove_key_binding('nav-up')
+    mp.remove_key_binding('nav-open')
+    mp.remove_key_binding('nav-undo')
+    mp.remove_key_binding('nav-forward')
+    mp.remove_key_binding('nav-back')
+  end
+end
+timer = mp.add_periodic_timer(settings.osd_dur, remove_keybinds)
+timer:kill()
+if not settings.dynamic_binds then
+  add_keybinds()
+end
+
+active=false
+function activate()
+	if settings.menu_timeout then
+		handler()
+	else
+		if active then
+			mp.osd_message("")
+			remove_keybinds()
+			active=false
+		else
+			handler()
+			active=true
+		end
+	end
+end
+
+mp.add_key_binding("f", "navigator", activate)
+mp.add_key_binding("u", "nav-favorites", cyclefavorite)
