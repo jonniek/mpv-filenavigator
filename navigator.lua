@@ -13,22 +13,27 @@ local settings = {
     '/media/HDD/users/anon/Downloads/',
     '/home/anon/',
   },
-  --ignore paths, value anything that returns true for if statement
-  --you can ignore children without ignoring the parent
-  ignorePath = {
+  --list of paths to ignore. the value is anything that returns true for if-statement.
+  --directory ignore entries must end with a trailing slash,
+  --but files and all symlinks (even to dirs) must be without slash!
+  --to help you with the format, simply run "ls -1p <parent folder>" in a terminal,
+  --and you will see if the file/folder to ignore is listed as "file" or "folder/" (trailing slash).
+  --you can ignore children without ignoring their parent.
+  ignorePaths = {
     --general linux system paths (some are used by macOS too):
-    ['/bin']='1',['/boot']='1',['/cdrom']='1',['/dev']='1',['/etc']='1',['/lib']='1',['/lib32']='1',['/lib64']='1',
-    ['/srv']='1',['/sys']='1',['/snap']='1',['/root']='1',['/sbin']='1',['/proc']='1',['/opt']='1',['/usr']='1',['/run']='1',
-    --useless macOS system paths:
-    ['/cores']='1',['/installer.failurerequests']='1',['/net']='1',['/private']='1',['/tmp']='1',['/var']='1'
+    ['/bin/']='1',['/boot/']='1',['/cdrom/']='1',['/dev/']='1',['/etc/']='1',['/lib/']='1',['/lib32/']='1',['/lib64/']='1',['/tmp/']='1',
+    ['/srv/']='1',['/sys/']='1',['/snap/']='1',['/root/']='1',['/sbin/']='1',['/proc/']='1',['/opt/']='1',['/usr/']='1',['/run/']='1',
+    --useless macOS system paths (some of these standard folders are actually files (symlinks) into /private/ subpaths, hence some repetition):
+    ['/cores/']='1',['/etc']='1',['/installer.failurerequests']='1',['/net/']='1',['/private/']='1',['/tmp']='1',['/var']='1'
   },
-  --ignore folders and files that match patterns, make sure you use ^and$ to catch the whole str, value '' specifically
+  --ignore folders and files that match patterns regardless of where they exist on disk.
+  --make sure you use ^ (start of string) and $ (end of string) to catch the whole str instead of risking partial false positives.
   --read about patterns at https://www.lua.org/pil/20.2.html or http://lua-users.org/wiki/PatternsTutorial
-  ignorePat = {
-    ['^initrd%..*$']='',  --hide folders starting with initrd.
-    ['^vmlinuz.*$']='',
-    ['^lost%+found$']='',
-    ['^.*%.log$']='', --ignore extension .log
+  ignorePatterns = {
+    '^initrd%..*/?$', --hide files and folders folders starting with "initrd.<something>"
+    '^vmlinuz.*/?$', --hide files and folders starting with "vmlinuz<something>"
+    '^lost%+found/?$', --hide files and folders named "lost+found"
+    '^.*%.log$', --ignore files with extension .log
   },
 
   navigator_mainkey = "f",     --the key to bring up navigator's menu (will be auto-bound by the script, but you can set this to nil here to use input.conf instead!)
@@ -40,6 +45,20 @@ local settings = {
   navigator_font_size = 40,    --the font size to use for the OSD while the navigator is open
   normal_font_size = mp.get_property("osd-font-size") --the OSD font size to return to when the navigator closes (get the osd-font-size property for default)
 }
+
+--escape a file or directory path for use in shell arguments
+function escapepath(dir, escapechar)
+  return string.gsub(dir, escapechar, '\\'..escapechar)
+end
+
+--ensures directories never accidentally end in "//" due to our added slash
+function stripdoubleslash(dir)
+  if (string.sub(dir, -2) == "//") then
+    return string.sub(dir, 1, -2) --negative 2 removes the last character
+  else
+    return dir
+  end
+end
 
 function os.capture(cmd, raw)
   local f = assert(io.popen(cmd, 'r'))
@@ -126,7 +145,8 @@ function childdir()
   local item = dir[cursor]
   if item then
     if isfolder(path..item) then
-      changepath(path..dir[cursor].."/")
+      local newdir = stripdoubleslash(path..dir[cursor].."/")
+      changepath(newdir)
     else
       mp.commandv("loadfile", path..item, "append-play")
       handler("added")
@@ -167,44 +187,47 @@ end
 
 --move up to the parent directory
 function parentdir()
-  local parent = os.capture('cd '..string.gsub(path, "(%s)", "\\%1")..'; cd .. ; pwd').."/"
-  if (string.sub(parent, -2) == "//") then
-    parent = string.sub(parent, 1, -2) --negative 2 removes the last character
-  end
+  --if path doesn't exist or can't be entered, this returns "/" (root of the drive) as the parent
+  local parent = stripdoubleslash(os.capture('cd "'..escapepath(path, '"')..'" 2>/dev/null && cd .. 2>/dev/null && pwd').."/")
   changepath(parent)
 end
 
 --resolves relative paths such as "/home/foo/../foo/Music" (to "/home/foo/Music") if the folder exists!
 function resolvedir(dir)
-  safedir = string.gsub(dir, "(%s)", "\\%1")
-  local resolved = os.capture('test -d '..safedir..' && cd '..safedir..' && pwd').."/"
-  if (string.sub(resolved, -2) == "//") then
-    resolved = string.sub(resolved, 1, -2) --negative 2 removes the last character
-  end
+  local safedir = escapepath(dir, '"')
+  --if dir doesn't exist or can't be entered, this returns "/" (root of the drive) as the resolved path
+  local resolved = stripdoubleslash(os.capture('cd "'..safedir..'" 2>/dev/null && pwd').."/")
   return resolved
 end
 
 --true if path exists and is a folder, otherwise false
 function isfolder(dir)
-  return os.execute('test -d '..string.gsub(dir, "(%s)", "\\%1"))
+  return os.execute('test -d "'..escapepath(dir, '"')..'"')
 end
 
-function scandirectory(arg)
+function scandirectory(searchdir)
   local directory = {}
-  local search = string.gsub(arg, "(%s)", "\\%1")
 
   local popen=nil
   local i = 0
-  --get basenames by globbing all files, but avoid glob asterisk if dir was empty
-  popen = io.popen('basename '..search..'/* | sed "s/^\\*$//"')
+  --list all files, using universal utilities and flags available on both Linux and macOS
+  --  ls: -1 = list one file per line, -p = append "/" indicator to the end of directory names
+  --  sort: -f = do a case-insensitive sort of the "ls" results
+  --  stderr messages are ignored by sending them to /dev/null
+  --  hidden files ("." prefix) are skipped, since they exist everywhere and never contain media
+  --  if we cannot list the contents (due to no permissions, etc), this returns an empty list
+  popen = io.popen('ls -1p "'..escapepath(searchdir, '"')..'" 2>/dev/null | sort -f')
   if popen then
-    for dirx in popen:lines() do
-      local matched = false
-      for match, replace in pairs(settings.ignorePat) do
-        if dirx:gsub(match, replace) == '' then matched = true end
+    for direntry in popen:lines() do
+      local matchedignore = false
+      for k,pattern in pairs(settings.ignorePatterns) do
+        if direntry:find(pattern) then
+          matchedignore = true
+          break --don't waste time scanning further patterns
+        end
       end
-      if not settings.ignorePath[path..dirx] and not matched then
-        directory[i] = dirx
+      if not matchedignore and not settings.ignorePaths[path..direntry] then
+        directory[i] = direntry
         i=i+1
       end
     end
@@ -251,7 +274,7 @@ function remove_keybinds()
     mp.remove_key_binding('nav-undo')
     mp.remove_key_binding('nav-forward')
     mp.remove_key_binding('nav-back')
-    mp.remove_key_binding("nav-favorites")
+    mp.remove_key_binding('nav-favorites')
   end
 end
 timer = mp.add_periodic_timer(settings.osd_dur, clearosd)
