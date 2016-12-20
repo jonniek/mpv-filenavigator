@@ -1,5 +1,5 @@
 # Mpv Filenavigator  
-File navigator for mpv media player. Currently works on Linux and MacOS, relies on standard output of test, pwd and ls. Edit the settings variable in the lua file to change defaults and to add favorite paths. Big thanks to [SteveJobzniak](https://github.com/SteveJobzniak) for contributing MacOS compability and more reliable features, check out his awesome lua scripts in [mpv-tools](https://github.com/SteveJobzniak/mpv-tools).
+File navigator for mpv media player. Currently works on Linux and MacOS, relies on default unix commands cd, pwd, sort, test and ls. Edit the settings variable in the lua file to change defaults and to add favorite paths. Big thanks to [SteveJobzniak](https://github.com/SteveJobzniak) for contributing MacOS compability and more reliable features, check out his awesome lua scripts in [mpv-tools](https://github.com/SteveJobzniak/mpv-tools).
 
 #### Keybinds  
 - __navigator (f)__ Activate script. When using dynamic keys this will need to be invoked to register keybindings.
