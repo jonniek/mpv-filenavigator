@@ -12,15 +12,15 @@ File navigator for mpv media player. Currently works on Linux and MacOS, relies 
 On default dynamic keys are active which means that other binds than navigator(f) will only be active after activating the script with navigator keybind and until the osd timeouts. Dynamic toggle can be changed in lua settings variable. All keybinds can be changed in input.conf with `KEY script-binding keybind-name` ex. `K scipt-binding nav-favorites`. Below is a list of all keybindings for copy pasting to input.conf:  
 ```
 #Static keybinding  
-f scipt-binding navigator  
+Alt+f script-binding navigator  
 #Dynamic keybindings  
-g scipt-binding nav-favorites  
-UP scipt-binding nav-up  
-DOWN scipt-binding nav-down  
-LEFT scipt-binding nav-back  
-RIGHT scipt-binding nav-forward  
-BS scipt-binding nav-undo  
-ENTER scipt-binding nav-open  
+g script-binding nav-favorites  
+UP script-binding nav-up  
+DOWN script-binding nav-down  
+LEFT script-binding nav-back  
+RIGHT script-binding nav-forward  
+BS script-binding nav-undo  
+ENTER script-binding nav-open  
 ```
 ![alt text](https://giant.gfycat.com/DisfiguredBlindAmethystinepython.gif "Screenshot")
 
