@@ -9,7 +9,7 @@ File navigator for mpv media player. Currently works on Linux and MacOS, relies 
 - __nav-open (Enter)__ open directory or file with mpv, same as `mpv /path/to/dir-or-file`, replaces playlist
 - __nav-favorites (f)__ cycle between favorite directories, edit settings to setup
 
-On default dynamic keys are active which means that other binds than navigator(Alt+f) will only be active after activating the script with navigator keybind and until the osd timeouts. Dynamic toggle can be changed in lua settings variable. All keybinds can be changed in input.conf with `KEY script-binding keybind-name` ex. `K scipt-binding nav-favorites`.  Below is a list of all keybindings for copy pasting to input.conf:  
+On default dynamic keys are active which means that other binds than navigator(Alt+f) will only be active after activating the script with navigator keybind and until the osd timeouts. Dynamic keybindings will only override keys while they are active. Dynamic setting toggle can be changed in lua settings variable. All keybinds can be changed in input.conf with `KEY script-binding keybind-name` ex. `K scipt-binding nav-favorites`.  Below is a list of all keybindings for copy pasting to input.conf:  
 ```
 #Filenavigator keybindings
 Alt+f script-binding navigator  
