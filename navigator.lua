@@ -36,8 +36,8 @@ local settings = {
     '^.*%.log$', --ignore files with extension .log
   },
 
-  navigator_mainkey = "f",     --the key to bring up navigator's menu (will be auto-bound by the script, but you can set this to nil here to use input.conf instead!)
-  navigator_menu_favkey = "g", --cannot be nil; this key will always be bound when the menu is open, and is the key you use to cycle your favorites list!
+  navigator_mainkey = "Alt+f",     --the key to bring up navigator's menu (will be auto-bound by the script, but you can set this to nil here to use input.conf instead!)
+  navigator_menu_favkey = "f", --cannot be nil; this key will always be bound when the menu is open, and is the key you use to cycle your favorites list!
   dynamic_binds = true,        --navigation keybinds override arrowkeys and enter when activating navigation menu, false means keys are always actíve
   menu_timeout = true,         --menu timeouts and closes itself after osd_dur seconds, else will be toggled by keybind
   osd_dur = 5,                 --osd duration before the navigator closes, if timeout is set to true
