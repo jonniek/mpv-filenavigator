@@ -24,7 +24,5 @@ ENTER script-binding nav-open
 ```
 ![alt text](https://giant.gfycat.com/DisfiguredBlindAmethystinepython.gif "Screenshot")
 
-####My other scripts
-- [unseen-playlistmaker](https://github.com/donmaiq/unseen-playlistmaker)
-- [playlistmanager](https://github.com/donmaiq/Mpv-Playlistmanager)
-- [nextfile](https://github.com/donmaiq/mpv-nextfile)
+#### My other mpv scripts
+- [collection of scripts](https://github.com/donmaiq/mpv-scripts)
