@@ -36,8 +36,8 @@ local settings = {
     '^.*%.log$', --ignore files with extension .log
   },
 
-  navigator_mainkey = "Alt+f",     --the key to bring up navigator's menu (will be auto-bound by the script, but you can set this to nil here to use input.conf instead!)
-  navigator_menu_favkey = "f", --cannot be nil; this key will always be bound when the menu is open, and is the key you use to cycle your favorites list!
+  navigator_mainkey = "Alt+f", --the key to bring up navigator's menu, can be bound on input.conf aswell
+  navigator_menu_favkey = "f", --this key will always be bound when the menu is open, and is the key you use to cycle your favorites list!
   dynamic_binds = true,        --navigation keybinds override arrowkeys and enter when activating navigation menu, false means keys are always actíve
   menu_timeout = true,         --menu timeouts and closes itself after osd_dur seconds, else will be toggled by keybind
   osd_dur = 5,                 --osd duration before the navigator closes, if timeout is set to true
@@ -45,6 +45,7 @@ local settings = {
   navigator_font_size = 40,    --the font size to use for the OSD while the navigator is open
   normal_font_size = mp.get_property("osd-font-size") --the OSD font size to return to when the navigator closes (get the osd-font-size property for default)
 }
+
 
 --escape a file or directory path for use in shell arguments
 function escapepath(dir, escapechar)
@@ -207,16 +208,13 @@ end
 
 function scandirectory(searchdir)
   local directory = {}
-
-  local popen=nil
-  local i = 0
   --list all files, using universal utilities and flags available on both Linux and macOS
-  --  ls: -1 = list one file per line, -p = append "/" indicator to the end of directory names
-  --  sort: -f = do a case-insensitive sort of the "ls" results
+  --  ls: -1 = list one file per line, -p = append "/" indicator to the end of directory names, -v = display in natural order
   --  stderr messages are ignored by sending them to /dev/null
   --  hidden files ("." prefix) are skipped, since they exist everywhere and never contain media
   --  if we cannot list the contents (due to no permissions, etc), this returns an empty list
-  popen = io.popen('ls -1p "'..escapepath(searchdir, '"')..'" 2>/dev/null | sort -f')
+  local popen, err = io.popen('ls -1vp "'..escapepath(searchdir, '"')..'" 2>/dev/null')
+  local i = 0
   if popen then
     for direntry in popen:lines() do
       local matchedignore = false
@@ -231,8 +229,9 @@ function scandirectory(searchdir)
         i=i+1
       end
     end
+    popen:close()
   else
-    print("error: could not scan for files")
+    mp.msg.error("Could not scan for files :"..(err or ""))
   end
   return directory, i
 end
@@ -298,11 +297,4 @@ function activate()
   end
 end
 
-if (settings.navigator_mainkey ~= nil) then
-  --override defaults and input.conf
-  mp.add_forced_key_binding(settings.navigator_mainkey, "navigator", activate)
-else
-  --just register the binding but no key, so that the user can bind it themselves
-  --via input.conf, as follows: Alt+x script-binding navigator
-  mp.add_key_binding(nil, "navigator", activate)
-end
+mp.add_key_binding(settings.navigator_mainkey, "navigator", activate)
