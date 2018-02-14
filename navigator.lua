@@ -5,10 +5,11 @@
 -- URL: https://github.com/donmaiq/mpv-filenavigator
 --
 local settings = {
-  defaultpath = "/", --fallback if no file is open
+  --fallback if no file is open, should be a string that points to a path in your system
+  defaultpath = os.getenv("HOME") or "/",
   forcedefault = false, --force navigation to start from defaultpath instead of currently playing file
   --favorites in format { 'Path to directory, notice trailing /' }
-  favorites =  {
+  favorites = {
     '/media/HDD2/music/music/',
     '/media/HDD/users/anon/Downloads/',
     '/home/anon/',
