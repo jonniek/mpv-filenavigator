@@ -1,4 +1,6 @@
---
+
+  local lua51returncode, _, lua52returncode = os.execute('test -d "'..escapepath(dir, '"')..'"')
+  return lua51returncode == 0 or lua52returncode == 0--
 -- Mpv Filenavigator
 -- Author: donmaiq
 -- Contributors: SteveJobzniak
@@ -206,7 +208,8 @@ end
 
 --true if path exists and is a folder, otherwise false
 function isfolder(dir)
-  return os.execute('test -d "'..escapepath(dir, '"')..'"')
+  local lua51returncode, _, lua52returncode = os.execute('test -d "'..escapepath(dir, '"')..'"')
+  return lua51returncode == 0 or lua52returncode == 0
 end
 
 function scandirectory(searchdir)
