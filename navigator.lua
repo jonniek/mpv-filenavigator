@@ -1,6 +1,4 @@
 
-  local lua51returncode, _, lua52returncode = os.execute('test -d "'..escapepath(dir, '"')..'"')
-  return lua51returncode == 0 or lua52returncode == 0--
 -- Mpv Filenavigator
 -- Author: donmaiq
 -- Contributors: SteveJobzniak
