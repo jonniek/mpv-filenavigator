@@ -4,9 +4,19 @@
 -- Contributors: SteveJobzniak
 -- URL: https://github.com/donmaiq/mpv-filenavigator
 --
+
+local utils = require 'mp.utils'
+
+ON_WINDOWS = (package.config:sub(1,1) ~= '/')
+WINDOWS_ROOTDIR = false
+WINDOWS_ROOT_DESC = "Select drive"
+SEPARATOR_WINDOWS = "\\"
+
+SEPARATOR = "/"
+
 local settings = {
   --fallback if no file is open, should be a string that points to a path in your system
-  defaultpath = os.getenv("HOME") or "/",
+  defaultpath = utils.join_path(os.getenv("USERPROFILE"), "Desktop"):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS or os.getenv("HOME") or "/",
   forcedefault = false, --force navigation to start from defaultpath instead of currently playing file
   --favorites in format { 'Path to directory, notice trailing /' }
   favorites = {
@@ -35,6 +45,7 @@ local settings = {
     '^vmlinuz.*/?$', --hide files and folders starting with "vmlinuz<something>"
     '^lost%+found/?$', --hide files and folders named "lost+found"
     '^.*%.log$', --ignore files with extension .log
+    '^%$.*$', --ignore files starting with $
   },
 
   navigator_mainkey = "Alt+f", --the key to bring up navigator's menu, can be bound on input.conf aswell
@@ -86,14 +97,18 @@ function handler(arg)
       local firstchar = string.sub(playpath, 1, 1)
       --first we need to remove the filename (may give us empty path if mpv was started in same dir as file)
       path = string.sub(playpath, 1, string.len(playpath)-string.len(playfilename))
-      if (firstchar ~= "/") then --the path of the playing file wasn't absolute, so we need to add mpv's working dir to it
+      if (firstchar ~= "/" and not ON_WINDOWS) then --the path of the playing file wasn't absolute, so we need to add mpv's working dir to it
         path = workingdir.."/"..path
       end
       --now resolve that path (to resolve things like "/home/anon/Movies/../Movies/foo.mkv")
       path = resolvedir(path)
       --lastly, check if the folder exists, and if not then fall back to the current mpv working dir
       if (not isfolder(path)) then
-        path = workingdir
+        if ON_WINDOWS then
+          path = workingdir..SEPARATOR_WINDOWS
+        else
+          path = workingdir
+        end
       end
     else path = settings.defaultpath end
     dir,length = scandirectory(path)
@@ -147,6 +162,29 @@ end
 --moves into selected directory, or appends to playlist incase of file
 function childdir()
   local item = dir[cursor]
+  
+  -- windows only
+  if ON_WINDOWS then
+    if WINDOWS_ROOTDIR then
+      WINDOWS_ROOTDIR = false
+    end
+    if item then
+      local newdir = utils.join_path(path, item):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS
+      local info, error = utils.file_info(newdir)
+      
+      print(newdir)
+      
+      if info and info.is_dir then
+        changepath(newdir)
+      else
+        mp.commandv("loadfile", utils.join_path(path, item), "append-play")
+        handler("added")
+      end
+    end
+    
+    return
+  end
+  
   if item then
     if isfolder(path..item) then
       local newdir = stripdoubleslash(path..dir[cursor].."/")
@@ -177,6 +215,13 @@ function opendir()
   local item = dir[cursor]
   if item then
     clearosd()
+    
+    -- windows only
+    if ON_WINDOWS then
+      mp.commandv("loadfile", utils.join_path(path, item):gsub(SEPARATOR, SEPARATOR_WINDOWS), "replace")
+      return
+    end
+    
     mp.commandv("loadfile", path..item, "replace")
   end
 end
@@ -184,6 +229,9 @@ end
 --changes the directory to the path in argument
 function changepath(args)
   path = args
+  if WINDOWS_ROOTDIR then
+    path = WINDOWS_ROOT_DESC
+  end
   dir,length = scandirectory(path)
   cursor=0
   handler()
@@ -191,14 +239,37 @@ end
 
 --move up to the parent directory
 function parentdir()
+  -- windows only
+  if ON_WINDOWS then
+    if path:sub(-1) == SEPARATOR_WINDOWS then
+      path = path:sub(1, -2)
+    end
+    local parent = utils.split_path(path)
+    if path == parent then
+      WINDOWS_ROOTDIR = true
+    end
+    changepath(parent)
+    return
+  end
+  
   --if path doesn't exist or can't be entered, this returns "/" (root of the drive) as the parent
   local parent = stripdoubleslash(os.capture('cd "'..escapepath(path, '"')..'" 2>/dev/null && cd .. 2>/dev/null && pwd').."/")
+  
   changepath(parent)
 end
 
 --resolves relative paths such as "/home/foo/../foo/Music" (to "/home/foo/Music") if the folder exists!
 function resolvedir(dir)
   local safedir = escapepath(dir, '"')
+  
+  -- windows only
+  if ON_WINDOWS then
+    msg.debug('1 resolvedir: ', safedir)
+    local resolved = stripdoubleslash(os.capture('cd /d "'..safedir..'" && cd'))
+    msg.debug('2 resolvedir: ', resolved)
+    return resolved..SEPARATOR_WINDOWS
+  end
+  
   --if dir doesn't exist or can't be entered, this returns "/" (root of the drive) as the resolved path
   local resolved = stripdoubleslash(os.capture('cd "'..safedir..'" 2>/dev/null && pwd').."/")
   return resolved
@@ -206,6 +277,12 @@ end
 
 --true if path exists and is a folder, otherwise false
 function isfolder(dir)
+  -- windows only
+  if ON_WINDOWS then
+    local info, error = utils.file_info(dir)
+    return info and info.is_dir or nil
+  end
+
   local lua51returncode, _, lua52returncode = os.execute('test -d "'..escapepath(dir, '"')..'"')
   return lua51returncode == 0 or lua52returncode == 0
 end
@@ -217,6 +294,64 @@ function scandirectory(searchdir)
   --  stderr messages are ignored by sending them to /dev/null
   --  hidden files ("." prefix) are skipped, since they exist everywhere and never contain media
   --  if we cannot list the contents (due to no permissions, etc), this returns an empty list
+  
+  -- windows only
+  if ON_WINDOWS then
+    -- handle drive letters
+    if WINDOWS_ROOTDIR then
+      local popen, err = io.popen("wmic logicaldisk get caption")
+      local i = 0
+      if popen then
+        for direntry in popen:lines() do
+          -- only single letter followed by colon (:) are valid
+          if string.find(direntry, "^%a:") then
+            direntry = string.sub(direntry, 1, 2)
+            local matchedignore = false
+            for k,pattern in pairs(settings.ignorePatterns) do
+              if direntry:find(pattern) then
+                matchedignore = true
+                break --don't waste time scanning further patterns
+              end
+            end
+            if not matchedignore and not settings.ignorePaths[path..direntry] then
+              directory[i] = direntry
+              i=i+1
+            end
+          end
+        end
+        popen:close()
+      else
+        mp.msg.error("Could not scan for files :"..(err or ""))
+      end
+      
+      return directory, i
+    end
+    
+    local i = 0
+    local files = utils.readdir(searchdir)
+    
+    if not files then
+      mp.msg.error("Could not scan for files :"..(err or ""))
+      return directory, i
+    end
+    
+    for _, direntry in ipairs(files) do
+      local matchedignore = false
+      for k,pattern in pairs(settings.ignorePatterns) do
+        if direntry:find(pattern) then
+          matchedignore = true
+          break --don't waste time scanning further patterns
+        end
+      end
+      if not matchedignore and not settings.ignorePaths[path..direntry] then
+        directory[i] = direntry
+        i=i+1
+      end
+    end
+    
+    return directory, i
+  end
+  
   local popen, err = io.popen('ls -1vp "'..escapepath(searchdir, '"')..'" 2>/dev/null')
   local i = 0
   if popen then
