@@ -5,9 +5,10 @@
 -- URL: https://github.com/donmaiq/mpv-filenavigator
 --
 
-local utils = require 'mp.utils'
+local utils = require("mp.utils")
+local mpopts = require("mp.options")
 
-ON_WINDOWS = (package.config:sub(1,1) ~= '/')
+ON_WINDOWS = (package.config:sub(1,1) ~= "/")
 WINDOWS_ROOTDIR = false
 WINDOWS_ROOT_DESC = "Select drive"
 SEPARATOR_WINDOWS = "\\"
@@ -19,6 +20,7 @@ local settings = {
   defaultpath = utils.join_path(os.getenv("USERPROFILE"), "Desktop"):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS or os.getenv("HOME") or "/",
   forcedefault = false, --force navigation to start from defaultpath instead of currently playing file
   --favorites in format { 'Path to directory, notice trailing /' }
+  --on windows use double baclkslash c:\\my\\directory\\
   favorites = {
     '/media/HDD2/music/music/',
     '/media/HDD/users/anon/Downloads/',
@@ -58,6 +60,7 @@ local settings = {
   normal_font_size = mp.get_property("osd-font-size") --the OSD font size to return to when the navigator closes (get the osd-font-size property for default)
 }
 
+mpopts.read_options(settings)
 
 --escape a file or directory path for use in shell arguments
 function escapepath(dir, escapechar)
@@ -264,9 +267,7 @@ function resolvedir(dir)
   
   -- windows only
   if ON_WINDOWS then
-    msg.debug('1 resolvedir: ', safedir)
     local resolved = stripdoubleslash(os.capture('cd /d "'..safedir..'" && cd'))
-    msg.debug('2 resolvedir: ', resolved)
     return resolved..SEPARATOR_WINDOWS
   end
   
