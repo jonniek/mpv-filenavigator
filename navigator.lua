@@ -17,7 +17,7 @@ SEPARATOR = "/"
 
 local settings = {
   --fallback if no file is open, should be a string that points to a path in your system
-  defaultpath = utils.join_path(os.getenv("USERPROFILE"), "Desktop"):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS or os.getenv("HOME") or "/",
+  defaultpath = ON_WINDOWS and utils.join_path(os.getenv("USERPROFILE"), "Desktop"):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS or os.getenv("HOME") or "/",
   forcedefault = false, --force navigation to start from defaultpath instead of currently playing file
   --favorites in format { 'Path to directory, notice trailing /' }
   --on windows use double baclkslash c:\\my\\directory\\
