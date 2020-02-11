@@ -7,6 +7,7 @@
 
 local utils = require("mp.utils")
 local mpopts = require("mp.options")
+local assdraw = require("mp.assdraw")
 
 ON_WINDOWS = (package.config:sub(1,1) ~= "/")
 WINDOWS_ROOTDIR = false
@@ -15,12 +16,27 @@ SEPARATOR_WINDOWS = "\\"
 
 SEPARATOR = "/"
 
+local windows_desktop = ON_WINDOWS and utils.join_path(os.getenv("USERPROFILE"), "Desktop"):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS or nil
+
 local settings = {
+  --navigation keybinds override arrowkeys and enter when activating navigation menu, false means keys are always actíve
+  dynamic_binds = true,
+  navigator_mainkey = "Alt+f", --the key to bring up navigator's menu, can be bound on input.conf aswell
+
+  --dynamic binds, should not be bound in input.conf unless dynamic binds is false
+  key_navfavorites = "f",
+  key_navup = "UP",
+  key_navdown = "DOWN",
+  key_navback = "LEFT",
+  key_navforward = "RIGHT",
+  key_navopen = "ENTER",
+  key_navclose = "ESC",
+
   --fallback if no file is open, should be a string that points to a path in your system
-  defaultpath = ON_WINDOWS and utils.join_path(os.getenv("USERPROFILE"), "Desktop"):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS or os.getenv("HOME") or "/",
+  defaultpath = windows_desktop or os.getenv("HOME") or "/",
   forcedefault = false, --force navigation to start from defaultpath instead of currently playing file
   --favorites in format { 'Path to directory, notice trailing /' }
-  --on windows use double baclkslash c:\\my\\directory\\
+  --on windows use double backslash c:\\my\\directory\\
   favorites = {
     '/media/HDD2/music/music/',
     '/media/HDD/users/anon/Downloads/',
@@ -50,14 +66,27 @@ local settings = {
     '^%$.*$', --ignore files starting with $
   },
 
-  navigator_mainkey = "Alt+f", --the key to bring up navigator's menu, can be bound on input.conf aswell
   navigator_menu_favkey = "f", --this key will always be bound when the menu is open, and is the key you use to cycle your favorites list!
-  dynamic_binds = true,        --navigation keybinds override arrowkeys and enter when activating navigation menu, false means keys are always actíve
-  menu_timeout = true,         --menu timeouts and closes itself after osd_dur seconds, else will be toggled by keybind
-  osd_dur = 5,                 --osd duration before the navigator closes, if timeout is set to true
-  osd_items_per_screen = 10,   --how many menu items to show per screen
-  navigator_font_size = 40,    --the font size to use for the OSD while the navigator is open
-  normal_font_size = mp.get_property("osd-font-size") --the OSD font size to return to when the navigator closes (get the osd-font-size property for default)
+  menu_timeout = true,         --menu timeouts and closes itself after navigator_duration seconds, else will be toggled by keybind
+  navigator_duration = 13,     --osd duration before the navigator closes, if timeout is set to true
+  visible_item_count = 10,     --how many menu items to show per screen
+  
+  --font size scales by window, if false requires larger font and padding sizes
+  scale_by_window = true,
+  --paddings from top left corner
+  text_padding_x = 10,
+  text_padding_y = 30,
+  --ass style overrides inside curly brackets, \keyvalue is one field, extra \ for escape in lua
+  --example {\\fnUbuntu\\fs10\\b0\\bord1} equals: font=Ubuntu, size=10, bold=no, border=1
+  --read http://docs.aegisub.org/3.2/ASS_Tags/ for reference of tags
+  --undeclared tags will use default osd settings
+  --these styles will be used for the whole playlist
+  style_ass_tags = "{}",
+  --you can also use the ass tags mentioned above. For example:
+  --selected_file="{\\c&HFF00FF&}➔ %name"   | to add a color for selected file. However, if you
+  --use ass tags you need to reset them for every line (see https://github.com/jonniek/mpv-playlistmanager/issues/20)
+  name_prefix = "○ ",
+  selection_prefix = "● ",
 }
 
 mpopts.read_options(settings)
@@ -88,9 +117,14 @@ path = nil
 cursor = 0
 length = 0
 --osd handler that displays your navigation and information
-function handler(arg)
+function handler()
   add_keybinds()
   timer:kill()
+  local ass = assdraw.ass_new()
+  ass:new_event()
+  ass:pos(settings.text_padding_x, settings.text_padding_y)
+  ass:append(settings.style_ass_tags)
+
   if not path then
     if mp.get_property('path') and not settings.forcedefault then
       --determine path from currently playing file...
@@ -116,30 +150,22 @@ function handler(arg)
     else path = settings.defaultpath end
     dir,length = scandirectory(path)
   end
-  local output = path.."\n\n"
-  local b = cursor - math.floor(settings.osd_items_per_screen / 2)
-  if b > 0 then output=output.."...\n" end
-  if b<0 then b=0 end
-  for a=b,(b+settings.osd_items_per_screen),1 do
+  ass:append(path.."\\N\\N")
+  local b = cursor - math.floor(settings.visible_item_count / 2)
+  if b > 0 then ass:append("...\\N") end
+  if b < 0 then b=0 end
+  for a=b,(b+settings.visible_item_count),1 do
     if a==length then break end
-    if a == cursor then
-      entry="> "..dir[a].." <"
-      if arg == "added" then entry = entry .." + added to playlist\n"
-      elseif arg == "removed" then entry = entry.." - removed previous addition\n" else entry=entry.."\n" end
-    else
-      entry="  "..dir[a].."  \n"
-    end
-    entry=string.gsub(entry, " ", "\160")
-    output = output..entry
-    if a == (b+settings.osd_items_per_screen) then
-      output=output.."..."
+    local prefix = (a == cursor and settings.selection_prefix or settings.name_prefix)
+    ass:append(prefix..dir[a].."\\N")
+    if a == (b+settings.visible_item_count) then
+      ass:append("...")
     end
   end
-  mp.set_property("osd-font-size", settings.navigator_font_size)
-  if not settings.menu_timeout then
-    mp.osd_message(output, 100000)
-  else
-    mp.osd_message(output, settings.osd_dur)
+  local w, h = mp.get_osd_size()
+  if settings.scale_by_window then w,h = 0, 0 end
+  mp.set_osd_ass(w, h, ass.text)
+  if settings.menu_timeout then
     timer:resume()
   end
 end
@@ -175,13 +201,12 @@ function childdir()
       local newdir = utils.join_path(path, item):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS
       local info, error = utils.file_info(newdir)
       
-      print(newdir)
-      
       if info and info.is_dir then
         changepath(newdir)
       else
         mp.commandv("loadfile", utils.join_path(path, item), "append-play")
-        handler("added")
+        mp.osd_message("Appended file to playlist: "..item)
+        handler()
       end
     end
     
@@ -194,22 +219,10 @@ function childdir()
       changepath(newdir)
     else
       mp.commandv("loadfile", path..item, "append-play")
-      handler("added")
+      mp.osd_message("Appended file to playlist: "..item)
+      handler()
     end
   end
-end
-
---undo playlist file append
-function undo()
-  mp.commandv("playlist-remove", tonumber(mp.get_property('playlist-count'))-1)
-  handler("removed")
-end
-
---close OSD and restore regular font size, and remove bindings
-function clearosd()
-  mp.osd_message("", 0.2)
-  mp.set_property("osd-font-size", settings.normal_font_size)
-  remove_keybinds()
 end
 
 --replace current playlist with directory or file
@@ -217,7 +230,7 @@ end
 function opendir()
   local item = dir[cursor]
   if item then
-    clearosd()
+    remove_keybinds()
     
     -- windows only
     if ON_WINDOWS then
@@ -396,28 +409,31 @@ function cyclefavorite()
 end
 
 function add_keybinds()
-  mp.add_forced_key_binding("DOWN", "nav-down", navdown, "repeatable")
-  mp.add_forced_key_binding("UP", "nav-up", navup, "repeatable")
-  mp.add_forced_key_binding("ENTER", "nav-open", opendir)
-  mp.add_forced_key_binding("BS", "nav-undo", undo)
-  mp.add_forced_key_binding("RIGHT", "nav-forward", childdir)
-  mp.add_forced_key_binding("LEFT", "nav-back", parentdir)
-  mp.add_forced_key_binding(settings.navigator_menu_favkey, "nav-favorites", cyclefavorite)
+  mp.add_forced_key_binding(settings.key_navdown, "navdown", navdown, "repeatable")
+  mp.add_forced_key_binding(settings.key_navup, "navup", navup, "repeatable")
+  mp.add_forced_key_binding(settings.key_navopen, "navopen", opendir)
+  mp.add_forced_key_binding(settings.key_navforward, "navforward", childdir)
+  mp.add_forced_key_binding(settings.key_navback, "navback", parentdir)
+  mp.add_forced_key_binding(settings.key_navfavorites, "navfavorites", cyclefavorite)
+  mp.add_forced_key_binding(settings.key_navclose, "navclose", remove_keybinds)
 end
 
 function remove_keybinds()
+  timer:kill()
+  mp.set_osd_ass(0, 0, "")
   if settings.dynamic_binds then
     mp.remove_key_binding('nav-down')
     mp.remove_key_binding('nav-up')
     mp.remove_key_binding('nav-open')
-    mp.remove_key_binding('nav-undo')
     mp.remove_key_binding('nav-forward')
     mp.remove_key_binding('nav-back')
     mp.remove_key_binding('nav-favorites')
   end
 end
-timer = mp.add_periodic_timer(settings.osd_dur, clearosd)
+
+timer = mp.add_periodic_timer(settings.navigator_duration, remove_keybinds)
 timer:kill()
+
 if not settings.dynamic_binds then
   add_keybinds()
 end
@@ -428,7 +444,7 @@ function activate()
     handler()
   else
     if active then
-      clearosd()
+      remove_keybinds()
       active=false
     else
       handler()
