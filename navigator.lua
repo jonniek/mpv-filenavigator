@@ -73,11 +73,11 @@ local settings = {
   --example {\\fnUbuntu\\fs10\\b0\\bord1} equals: font=Ubuntu, size=10, bold=no, border=1
   --read http://docs.aegisub.org/3.2/ASS_Tags/ for reference of tags
   --undeclared tags will use default osd settings
-  --these styles will be used for the whole playlist
+  --these styles will be used for the whole navigator
   style_ass_tags = "{}",
   --you can also use the ass tags mentioned above. For example:
-  --selected_file="{\\c&HFF00FF&}➔ %name"   | to add a color for selected file. However, if you
-  --use ass tags you need to reset them for every line (see https://github.com/jonniek/mpv-playlistmanager/issues/20)
+  --selection_prefix="{\\c&HFF00FF&}● " - to add a color for selected file. However, if you
+  --use ass tags you need to set them for both name and selection prefix (see https://github.com/jonniek/mpv-playlistmanager/issues/20)
   name_prefix = "○ ",
   selection_prefix = "● ",
 }
