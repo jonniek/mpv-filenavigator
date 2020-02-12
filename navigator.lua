@@ -1,10 +1,3 @@
-
--- Mpv Filenavigator
--- Author: donmaiq
--- Contributors: SteveJobzniak
--- URL: https://github.com/donmaiq/mpv-filenavigator
---
-
 local utils = require("mp.utils")
 local mpopts = require("mp.options")
 local assdraw = require("mp.assdraw")
@@ -70,7 +63,7 @@ local settings = {
   menu_timeout = true,         --menu timeouts and closes itself after navigator_duration seconds, else will be toggled by keybind
   navigator_duration = 13,     --osd duration before the navigator closes, if timeout is set to true
   visible_item_count = 10,     --how many menu items to show per screen
-  
+
   --font size scales by window, if false requires larger font and padding sizes
   scale_by_window = true,
   --paddings from top left corner
@@ -191,7 +184,7 @@ end
 --moves into selected directory, or appends to playlist incase of file
 function childdir()
   local item = dir[cursor]
-  
+
   -- windows only
   if ON_WINDOWS then
     if WINDOWS_ROOTDIR then
@@ -200,7 +193,7 @@ function childdir()
     if item then
       local newdir = utils.join_path(path, item):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS
       local info, error = utils.file_info(newdir)
-      
+
       if info and info.is_dir then
         changepath(newdir)
       else
@@ -209,16 +202,16 @@ function childdir()
         handler()
       end
     end
-    
+
     return
   end
-  
+
   if item then
-    if isfolder(path..item) then
-      local newdir = stripdoubleslash(path..dir[cursor].."/")
+    if isfolder(utils.join_path(path, item)) then
+      local newdir = stripdoubleslash(utils.join_path(path, dir[cursor].."/"))
       changepath(newdir)
     else
-      mp.commandv("loadfile", path..item, "append-play")
+      mp.commandv("loadfile", utils.join_path(path, item), "append-play")
       mp.osd_message("Appended file to playlist: "..item)
       handler()
     end
@@ -231,14 +224,14 @@ function opendir()
   local item = dir[cursor]
   if item then
     remove_keybinds()
-    
+
     -- windows only
     if ON_WINDOWS then
       mp.commandv("loadfile", utils.join_path(path, item):gsub(SEPARATOR, SEPARATOR_WINDOWS), "replace")
       return
     end
-    
-    mp.commandv("loadfile", path..item, "replace")
+
+    mp.commandv("loadfile", utils.join_path(path, item), "replace")
   end
 end
 
@@ -267,23 +260,23 @@ function parentdir()
     changepath(parent)
     return
   end
-  
+
   --if path doesn't exist or can't be entered, this returns "/" (root of the drive) as the parent
   local parent = stripdoubleslash(os.capture('cd "'..escapepath(path, '"')..'" 2>/dev/null && cd .. 2>/dev/null && pwd').."/")
-  
+
   changepath(parent)
 end
 
 --resolves relative paths such as "/home/foo/../foo/Music" (to "/home/foo/Music") if the folder exists!
 function resolvedir(dir)
   local safedir = escapepath(dir, '"')
-  
+
   -- windows only
   if ON_WINDOWS then
     local resolved = stripdoubleslash(os.capture('cd /d "'..safedir..'" && cd'))
     return resolved..SEPARATOR_WINDOWS
   end
-  
+
   --if dir doesn't exist or can't be entered, this returns "/" (root of the drive) as the resolved path
   local resolved = stripdoubleslash(os.capture('cd "'..safedir..'" 2>/dev/null && pwd').."/")
   return resolved
@@ -308,7 +301,7 @@ function scandirectory(searchdir)
   --  stderr messages are ignored by sending them to /dev/null
   --  hidden files ("." prefix) are skipped, since they exist everywhere and never contain media
   --  if we cannot list the contents (due to no permissions, etc), this returns an empty list
-  
+
   -- windows only
   if ON_WINDOWS then
     -- handle drive letters
@@ -337,18 +330,18 @@ function scandirectory(searchdir)
       else
         mp.msg.error("Could not scan for files :"..(err or ""))
       end
-      
+
       return directory, i
     end
-    
+
     local i = 0
     local files = utils.readdir(searchdir)
-    
+
     if not files then
       mp.msg.error("Could not scan for files :"..(err or ""))
       return directory, i
     end
-    
+
     for _, direntry in ipairs(files) do
       local matchedignore = false
       for k,pattern in pairs(settings.ignorePatterns) do
@@ -362,10 +355,10 @@ function scandirectory(searchdir)
         i=i+1
       end
     end
-    
+
     return directory, i
   end
-  
+
   local popen, err = io.popen('ls -1vp "'..escapepath(searchdir, '"')..'" 2>/dev/null')
   local i = 0
   if popen then
