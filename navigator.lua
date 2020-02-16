@@ -59,6 +59,10 @@ local settings = {
     '^%$.*$', --ignore files starting with $
   },
 
+  subtitleformats = {
+    'srt', 'ssa', 'ttml', 'sbv', 'vtt', 'txt'
+  },
+
   navigator_menu_favkey = "f", --this key will always be bound when the menu is open, and is the key you use to cycle your favorites list!
   menu_timeout = true,         --menu timeouts and closes itself after navigator_duration seconds, else will be toggled by keybind
   navigator_duration = 13,     --osd duration before the navigator closes, if timeout is set to true
@@ -88,6 +92,12 @@ mpopts.read_options(settings)
 function escapepath(dir, escapechar)
   return string.gsub(dir, escapechar, '\\'..escapechar)
 end
+
+local sub_lookup = {}
+for _, ext in ipairs(settings.subtitleformats) do
+  sub_lookup[ext] = true
+end
+
 
 --ensures directories never accidentally end in "//" due to our added slash
 function stripdoubleslash(dir)
@@ -197,8 +207,13 @@ function childdir()
       if info and info.is_dir then
         changepath(newdir)
       else
-        mp.commandv("loadfile", utils.join_path(path, item), "append-play")
-        mp.osd_message("Appended file to playlist: "..item)
+        
+        if issubtitle(item) then
+          loadsubs(utils.join_path(path, item))
+        else
+          mp.commandv("loadfile", utils.join_path(path, item), "append-play")
+          mp.osd_message("Appended file to playlist: "..item)
+        end
         handler()
       end
     end
@@ -211,27 +226,45 @@ function childdir()
       local newdir = stripdoubleslash(utils.join_path(path, dir[cursor].."/"))
       changepath(newdir)
     else
-      mp.commandv("loadfile", utils.join_path(path, item), "append-play")
-      mp.osd_message("Appended file to playlist: "..item)
+      if issubtitle(item) then
+        loadsubs(utils.join_path(path, item))
+      else 
+        mp.commandv("loadfile", utils.join_path(path, item), "append-play")
+        mp.osd_message("Appended file to playlist: "..item)
+      end
       handler()
     end
   end
+end
+
+function issubtitle(file)
+  local ext = file:match("^.+%.(.+)$")
+  return ext and sub_lookup[ext:lower()]
+end
+
+function loadsubs(file)
+  mp.commandv("sub_add", file)
+  mp.osd_message("Loaded subtitle: "..file)
 end
 
 --replace current playlist with directory or file
 --if directory, mpv will recursively queue all items found in the directory and its subfolders
 function opendir()
   local item = dir[cursor]
+
   if item then
     remove_keybinds()
 
-    -- windows only
+    local filepath = utils.join_path(path, item)
     if ON_WINDOWS then
-      mp.commandv("loadfile", utils.join_path(path, item):gsub(SEPARATOR, SEPARATOR_WINDOWS), "replace")
-      return
+      filepath = filepath:gsub(SEPARATOR, SEPARATOR_WINDOWS)
     end
 
-    mp.commandv("loadfile", utils.join_path(path, item), "replace")
+    if issubtitle(item) then
+      return loadsubs(filepath)
+    end
+
+    mp.commandv("loadfile", filepath, "replace")
   end
 end
 
