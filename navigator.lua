@@ -415,12 +415,13 @@ function remove_keybinds()
   timer:kill()
   mp.set_osd_ass(0, 0, "")
   if settings.dynamic_binds then
-    mp.remove_key_binding('nav-down')
-    mp.remove_key_binding('nav-up')
-    mp.remove_key_binding('nav-open')
-    mp.remove_key_binding('nav-forward')
-    mp.remove_key_binding('nav-back')
-    mp.remove_key_binding('nav-favorites')
+    mp.remove_key_binding('navdown')
+    mp.remove_key_binding('navup')
+    mp.remove_key_binding('navopen')
+    mp.remove_key_binding('navforward')
+    mp.remove_key_binding('navback')
+    mp.remove_key_binding('navfavorites')
+    mp.remove_key_binding('navclose')
   end
 end
 
