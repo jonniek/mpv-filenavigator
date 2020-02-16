@@ -60,7 +60,7 @@ local settings = {
   },
 
   subtitleformats = {
-    'srt', 'ass', 'ssa', 'ttml', 'sbv', 'vtt', 'txt'
+    'srt', 'ass', 'lrc', 'ssa', 'ttml', 'sbv', 'vtt', 'txt'
   },
 
   navigator_menu_favkey = "f", --this key will always be bound when the menu is open, and is the key you use to cycle your favorites list!
