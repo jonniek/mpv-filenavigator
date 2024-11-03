@@ -198,7 +198,6 @@ function movepageup()
   local prev_cursor = cursor
   cursor = cursor - settings.visible_item_count
   if cursor < 0 then cursor = 0 end
-  if selection then mp.commandv("playlist-move", prev_cursor, cursor) end
   handler()
 end
 
@@ -207,7 +206,6 @@ function movepagedown()
   local prev_cursor = cursor
   cursor = cursor + settings.visible_item_count
   if cursor >= length then cursor = length-1 end
-  if selection then mp.commandv("playlist-move", prev_cursor, cursor+1) end
   handler()
 end
 
