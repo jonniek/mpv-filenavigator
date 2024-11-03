@@ -24,6 +24,8 @@ local settings = {
   key_navforward = "RIGHT",
   key_navopen = "ENTER",
   key_navclose = "ESC",
+  key_navpageup = "PGUP",
+  key_navpagedown = "PGDWN",
 
   --fallback if no file is open, should be a string that points to a path in your system
   defaultpath = windows_desktop or os.getenv("HOME") or "/",
@@ -188,6 +190,22 @@ function navup()
   else
     cursor = length-1
   end
+  handler()
+end
+
+function movepageup()
+  if cursor == 0 then return end
+  local prev_cursor = cursor
+  cursor = cursor - settings.visible_item_count
+  if cursor < 0 then cursor = 0 end
+  handler()
+end
+
+function movepagedown()
+  if cursor == length-1 then return end
+  local prev_cursor = cursor
+  cursor = cursor + settings.visible_item_count
+  if cursor >= length then cursor = length-1 end
   handler()
 end
 
@@ -442,6 +460,8 @@ function add_keybinds()
   mp.add_forced_key_binding(settings.key_navback, "navback", parentdir)
   mp.add_forced_key_binding(settings.key_navfavorites, "navfavorites", cyclefavorite)
   mp.add_forced_key_binding(settings.key_navclose, "navclose", remove_keybinds)
+  mp.add_forced_key_binding(settings.key_navpageup, 'navpageup', movepageup, "repeatable")
+  mp.add_forced_key_binding(settings.key_navpagedown, 'navpagedown', movepagedown, "repeatable")
 end
 
 function remove_keybinds()
@@ -455,6 +475,8 @@ function remove_keybinds()
     mp.remove_key_binding('navback')
     mp.remove_key_binding('navfavorites')
     mp.remove_key_binding('navclose')
+    mp.remove_key_binding('navpageup')
+    mp.remove_key_binding('navpagedown')
   end
 end
 
