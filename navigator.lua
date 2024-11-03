@@ -29,11 +29,13 @@ local settings = {
 
   --fallback if no file is open, should be a string that points to a path in your system
   defaultpath = windows_desktop or os.getenv("HOME") or "/",
-  forcedefault = true, --force navigation to start from defaultpath instead of currently playing file
+  forcedefault = false, --force navigation to start from defaultpath instead of currently playing file
   --favorites in format { 'Path to directory, notice trailing /' }
   --on windows use double backslash c:\\my\\directory\\
   favorites = {
-    'y:\\Anime\\',
+    '/media/HDD2/music/music/',
+    '/media/HDD/users/anon/Downloads/',
+    '/home/anon/',
   },
   --list of paths to ignore. the value is anything that returns true for if-statement.
   --directory ignore entries must end with a trailing slash,
