@@ -219,7 +219,8 @@ function childdir()
       WINDOWS_ROOTDIR = false
     end
     if item then
-      local newdir = utils.join_path(path, item):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS
+      -- local newdir = utils.join_path(path, item):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS
+      local newdir = string.gsub(utils.join_path(path, item), "Select drive/", ""):gsub(SEPARATOR, SEPARATOR_WINDOWS)..SEPARATOR_WINDOWS
       local info, error = utils.file_info(newdir)
 
       if info and info.is_dir then
